@@ -147,7 +147,6 @@ export default function Home() {
                   }
               });
               const results: Response[] = response.data;
-              console.log('Response', results);
 
               results.forEach((data: Response) => {
                   if (data.assign === true) {
