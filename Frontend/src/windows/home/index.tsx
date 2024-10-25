@@ -2,7 +2,7 @@ import { ColorSwatch, Group } from '@mantine/core';
 import { Button } from '@/components/ui/button';
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import Draggable, { DraggableEvent } from 'react-draggable';
+import Draggable from 'react-draggable';
 import { SWATCHES } from '../../../colors';
 
 interface GeneratedResult {
@@ -27,9 +27,44 @@ interface SpeechRecognitionEventResult {
   };
 }
 
+// Math Expression Component
+const MathExpression = ({ 
+  expression, 
+  position, 
+  onPositionChange 
+}: { 
+  expression: string;
+  position: { x: number; y: number };
+  onPositionChange: (position: { x: number; y: number }) => void;
+}) => {
+  // Format the expression for better readability
+  const formatExpression = (expr: string) => {
+    return expr
+      .replace(/\\(.+?)\{(.+?)\}/g, '$2') // Remove LaTeX commands
+      .replace(/=/g, ' = ')
+      .replace(/\+/g, ' + ')
+      .replace(/\-/g, ' - ')
+      .replace(/\*/g, ' × ')
+      .replace(/\//g, ' ÷ ');
+  };
+
+  return (
+    <Draggable
+      defaultPosition={position}
+      onStop={(_, data) => onPositionChange({ x: data.x, y: data.y })}
+    >
+      <div className="absolute p-4 bg-gray-900 bg-opacity-80 rounded-lg shadow-lg backdrop-blur-sm cursor-grab active:cursor-grabbing hover:scale-105 transition-transform">
+        <div className="text-xl font-serif tracking-wide text-white">
+          {formatExpression(expression)}
+        </div>
+      </div>
+    </Draggable>
+  );
+};
+
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const recognitionRef = useRef<any>(null);  // Store recognition instance
+  const recognitionRef = useRef<any>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState('rgb(255, 255, 255)');
   const [reset, setReset] = useState(false);
@@ -58,14 +93,12 @@ export default function Home() {
     }
 
     if (listening) {
-      // Stop listening
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
       }
       setListening(false);
     } else {
-      // Start listening
       const recognition = new SpeechRecognition();
       recognition.lang = 'en-US';
       recognition.continuous = true;
@@ -100,7 +133,7 @@ export default function Home() {
     }
   };
 
-  // Use transcribedText in the UI for accessibility
+  // Canvas accessibility
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -108,20 +141,21 @@ export default function Home() {
     }
   }, [transcribedText]);
 
+  // Initial setup
   useEffect(() => {
-    if (latexExpression.length > 0 && window.MathJax) {
-      setTimeout(() => {
-        window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub]);
-      }, 0);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight - canvas.offsetTop;
+        ctx.lineCap = 'round';
+        ctx.lineWidth = 3;
+      }
     }
-  }, [latexExpression]);
+  }, []);
 
-  useEffect(() => {
-    if (result) {
-      renderLatexToCanvas(result.expression, result.answer);
-    }
-  }, [result]);
-
+  // Handle reset
   useEffect(() => {
     if (reset) {
       resetCanvas();
@@ -132,45 +166,17 @@ export default function Home() {
     }
   }, [reset]);
 
+  // Handle new results
   useEffect(() => {
-    const canvas = canvasRef.current;
-
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight - canvas.offsetTop;
-        ctx.lineCap = 'round';
-        ctx.lineWidth = 3;
-      }
+    if (result) {
+      renderLatexToCanvas(result.expression, result.answer);
     }
-
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML';
-    script.async = true;
-    document.head.appendChild(script);
-
-    script.onload = () => {
-      window.MathJax.Hub.Config({
-        tex2jax: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
-      });
-    };
-
-    return () => {
-      document.head.removeChild(script);
-    };
-  }, []);
+  }, [result]);
 
   const renderLatexToCanvas = (expression: string, answer: string) => {
-    const latex = `\\(\\LARGE{${expression} = ${answer}}\\)`;
-    setLatexExpression([...latexExpression, latex]);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    }
+    const formattedExpression = `${expression} = ${answer}`;
+    setLatexExpression([...latexExpression, formattedExpression]);
+    resetCanvas();
   };
 
   const resetCanvas = () => {
@@ -197,9 +203,8 @@ export default function Home() {
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) {
-      return;
-    }
+    if (!isDrawing) return;
+    
     const canvas = canvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
@@ -244,9 +249,9 @@ export default function Home() {
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         let minX = canvas.width,
-          minY = canvas.height,
-          maxX = 0,
-          maxY = 0;
+            minY = canvas.height,
+            maxX = 0,
+            maxY = 0;
 
         for (let y = 0; y < canvas.height; y++) {
           for (let x = 0; x < canvas.width; x++) {
@@ -286,7 +291,7 @@ export default function Home() {
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        ctx.font = '24px Arial';
+        ctx.font = '18px serif';
         ctx.fillStyle = color;
 
         const textWidth = ctx.measureText(text).width;
@@ -301,58 +306,42 @@ export default function Home() {
     }
   };
 
-  // const startListening = () => {
-  //   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-  //   if (!SpeechRecognition) {
-  //     alert('Speech recognition is not supported in this browser.');
-  //     return;
-  //   }
-
-  //   const recognition = new SpeechRecognition();
-  //   recognition.lang = 'en-US';
-  //   recognition.continuous = true;
-  //   recognition.interimResults = true;
-
-  //   recognition.onstart = () => {
-  //     setListening(true);
-  //   };
-
-  //   recognition.onend = () => {
-  //     setListening(false);
-  //   };
-
-  //   recognition.onresult = (event: SpeechRecognitionEventResult) => {
-  //     const transcript = event.results[event.resultIndex][0].transcript;
-  //     setTranscribedText(transcript);
-  //     drawTextOnCanvas(transcript);
-  //   };
-
-  //   recognition.start();
-  // };
-
   return (
     <>
-      <div className='grid grid-cols-4 gap-2 mt-2'>
+      <div className="grid grid-cols-4 gap-2 mt-2">
         <Button
           onClick={() => setReset(true)}
-          className='z-20 bg-black text-white'
-          variant='default'
-          color='black'
+          className="z-20 bg-black text-white hover:bg-gray-800"
+          variant="default"
         >
           Reset
         </Button>
-        <Group className='z-20'>
+        
+        <Group className="z-20">
           {SWATCHES.map((swatch) => (
-            <ColorSwatch key={swatch} color={swatch} onClick={() => setColor(swatch)} />
+            <ColorSwatch
+              key={swatch}
+              color={swatch}
+              onClick={() => setColor(swatch)}
+              className="cursor-pointer hover:scale-110 transition-transform"
+            />
           ))}
         </Group>
-        <Button onClick={runRoute} className='z-20 bg-black text-white' variant='default' color='white'>
+        
+        <Button
+          onClick={runRoute}
+          className="z-20 bg-black text-white hover:bg-gray-800"
+          variant="default"
+        >
           Run
         </Button>
+        
         <Button 
           onClick={toggleListening} 
-          className={`z-20 text-white transition-colors ${listening ? 'bg-green-500' : 'bg-black'}`} 
-          variant='default'
+          className={`z-20 text-white transition-colors ${
+            listening ? 'bg-green-500 hover:bg-green-600' : 'bg-black hover:bg-gray-800'
+          }`} 
+          variant="default"
         >
           {listening ? 'Stop Listening' : 'Start Listening'}
         </Button>
@@ -360,26 +349,22 @@ export default function Home() {
 
       <canvas
         ref={canvasRef}
-        id='canvas'
-        className='absolute top-0 left-0 w-full h-full'
+        id="canvas"
+        className="absolute top-0 left-0 w-full h-full"
         onMouseDown={startDrawing}
         onMouseMove={draw}
         onMouseUp={stopDrawing}
         onMouseOut={stopDrawing}
       />
 
-      {latexExpression &&
-        latexExpression.map((latex, index) => (
-          <Draggable
-            key={index}
-            defaultPosition={latexPosition}
-            onStop={(_: DraggableEvent, data) => setLatexPosition({ x: data.x, y: data.y })}
-          >
-            <div className='absolute p-2 text-white rounded shadow-md'>
-              <div className='latex-content'>{latex}</div>
-            </div>
-          </Draggable>
-        ))}
+      {latexExpression && latexExpression.map((latex, index) => (
+        <MathExpression
+          key={index}
+          expression={latex}
+          position={latexPosition}
+          onPositionChange={setLatexPosition}
+        />
+      ))}
     </>
   );
 }
