@@ -2,7 +2,7 @@ import { ColorSwatch, Group } from '@mantine/core';
 import { Button } from '@/components/ui/button';
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import Draggable from 'react-draggable';
+import Draggable, { DraggableEvent } from 'react-draggable';
 import { SWATCHES } from '../../../colors';
 
 interface GeneratedResult {
@@ -16,8 +16,20 @@ interface Response {
   assign: boolean;
 }
 
+interface SpeechRecognitionEventResult {
+  resultIndex: number;
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const recognitionRef = useRef<any>(null);  // Store recognition instance
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState('rgb(255, 255, 255)');
   const [reset, setReset] = useState(false);
@@ -27,6 +39,74 @@ export default function Home() {
   const [latexExpression, setLatexExpression] = useState<Array<string>>([]);
   const [listening, setListening] = useState(false);
   const [transcribedText, setTranscribedText] = useState('');
+
+  // Clean up recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser.');
+      return;
+    }
+
+    if (listening) {
+      // Stop listening
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+      setListening(false);
+    } else {
+      // Start listening
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        setListening(true);
+      };
+
+      recognition.onend = () => {
+        setListening(false);
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEventResult) => {
+        const transcript = event.results[event.resultIndex][0].transcript;
+        setTranscribedText(transcript);
+        drawTextOnCanvas(transcript);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setListening(false);
+      };
+
+      try {
+        recognition.start();
+        recognitionRef.current = recognition;
+      } catch (error) {
+        console.error('Error starting speech recognition:', error);
+        setListening(false);
+      }
+    }
+  };
+
+  // Use transcribedText in the UI for accessibility
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.setAttribute('aria-label', `Canvas content: ${transcribedText}`);
+    }
+  }, [transcribedText]);
 
   useEffect(() => {
     if (latexExpression.length > 0 && window.MathJax) {
@@ -202,56 +282,53 @@ export default function Home() {
   const drawTextOnCanvas = (text: string) => {
     const canvas = canvasRef.current;
     if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            ctx.font = '24px Arial';
-            ctx.fillStyle = color;
+        ctx.font = '24px Arial';
+        ctx.fillStyle = color;
 
-            const textWidth = ctx.measureText(text).width;
-            const canvasWidth = canvas.width;
-            const canvasHeight = canvas.height;
+        const textWidth = ctx.measureText(text).width;
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
 
-            const x = (canvasWidth - textWidth) / 2;
-            const y = canvasHeight / 2; 
+        const x = (canvasWidth - textWidth) / 2;
+        const y = canvasHeight / 2;
 
-            ctx.fillText(text, x, y);
-        }
+        ctx.fillText(text, x, y);
+      }
     }
-};
-
-
-  const startListening = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser.');
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    recognition.onstart = () => {
-      setListening(true);
-    };
-
-    recognition.onend = () => {
-      setListening(false);
-    };
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[event.resultIndex][0].transcript;
-      setTranscribedText(transcript); // Set transcribed text
-
-      // Render transcription directly to canvas
-      drawTextOnCanvas(transcript);
-    };
-
-    recognition.start();
   };
+
+  // const startListening = () => {
+  //   const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  //   if (!SpeechRecognition) {
+  //     alert('Speech recognition is not supported in this browser.');
+  //     return;
+  //   }
+
+  //   const recognition = new SpeechRecognition();
+  //   recognition.lang = 'en-US';
+  //   recognition.continuous = true;
+  //   recognition.interimResults = true;
+
+  //   recognition.onstart = () => {
+  //     setListening(true);
+  //   };
+
+  //   recognition.onend = () => {
+  //     setListening(false);
+  //   };
+
+  //   recognition.onresult = (event: SpeechRecognitionEventResult) => {
+  //     const transcript = event.results[event.resultIndex][0].transcript;
+  //     setTranscribedText(transcript);
+  //     drawTextOnCanvas(transcript);
+  //   };
+
+  //   recognition.start();
+  // };
 
   return (
     <>
@@ -272,8 +349,12 @@ export default function Home() {
         <Button onClick={runRoute} className='z-20 bg-black text-white' variant='default' color='white'>
           Run
         </Button>
-        <Button onClick={startListening} className='z-20 bg-black text-white' variant='default' color='white'>
-          Start Listening
+        <Button 
+          onClick={toggleListening} 
+          className={`z-20 text-white transition-colors ${listening ? 'bg-green-500' : 'bg-black'}`} 
+          variant='default'
+        >
+          {listening ? 'Stop Listening' : 'Start Listening'}
         </Button>
       </div>
 
@@ -287,13 +368,12 @@ export default function Home() {
         onMouseOut={stopDrawing}
       />
 
-      {/* Render LaTeX only for equations, not for transcribed speech */}
       {latexExpression &&
         latexExpression.map((latex, index) => (
           <Draggable
             key={index}
             defaultPosition={latexPosition}
-            onStop={(e, data) => setLatexPosition({ x: data.x, y: data.y })}
+            onStop={(_: DraggableEvent, data) => setLatexPosition({ x: data.x, y: data.y })}
           >
             <div className='absolute p-2 text-white rounded shadow-md'>
               <div className='latex-content'>{latex}</div>
