@@ -221,6 +221,7 @@ export default function Home() {
 
     if (canvas) {
       try {
+        axios.defaults.withCredentials=true;
         const response = await axios({
           method: 'post',
           url: `https://math-ai-server.vercel.app/calculate`,
