@@ -102,7 +102,11 @@ IMPORTANT: Response must be valid JSON. No explanation text, ONLY the JSON array
 }
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin:['https://math-ai-gilt.vercel.app/'],
+  methods:['POST','GET'],
+  credentials:true
+}));
 app.use(express.json({ limit: '50mb' }));
 
 const analyzer = new ImageAnalyzer(process.env.GEMINI_KEY);

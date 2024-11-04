@@ -133,7 +133,6 @@ export default function Home() {
     }
   };
 
-  // Canvas accessibility
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -141,7 +140,6 @@ export default function Home() {
     }
   }, [transcribedText]);
 
-  // Initial setup
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -155,7 +153,6 @@ export default function Home() {
     }
   }, []);
 
-  // Handle reset
   useEffect(() => {
     if (reset) {
       resetCanvas();
@@ -166,7 +163,6 @@ export default function Home() {
     }
   }, [reset]);
 
-  // Handle new results
   useEffect(() => {
     if (result) {
       renderLatexToCanvas(result.expression, result.answer);
