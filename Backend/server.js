@@ -103,7 +103,7 @@ IMPORTANT: Response must be valid JSON. No explanation text, ONLY the JSON array
 
 const app = express();
 app.use(cors({
-  origin:['https://math-ai-gilt.vercel.app/'],
+  origin:['https://math-ai-server.vercel.app/'],
   methods:['POST','GET'],
   credentials:true
 }));
