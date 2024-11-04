@@ -103,10 +103,11 @@ IMPORTANT: Response must be valid JSON. No explanation text, ONLY the JSON array
 
 const app = express();
 app.use(cors({
-  origin:['https://math-ai-server.vercel.app/'],
-  methods:['POST','GET'],
-  credentials:true
-}));
+  origin: ['https://math-ai-gilt.vercel.app', 'https://math-ai-server.vercel.app'],
+  methods: ['POST', 'GET', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}))
 app.use(express.json({ limit: '50mb' }));
 
 const analyzer = new ImageAnalyzer(process.env.GEMINI_KEY);
