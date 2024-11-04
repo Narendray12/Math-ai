@@ -108,6 +108,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }))
+
 app.use(express.json({ limit: '50mb' }));
 
 const analyzer = new ImageAnalyzer(process.env.GEMINI_KEY);

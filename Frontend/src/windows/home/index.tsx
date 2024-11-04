@@ -223,7 +223,7 @@ export default function Home() {
       try {
         const response = await axios({
           method: 'post',
-          url: `https://math-ai-server.vercel.app/`,
+          url: `https://math-ai-server.vercel.app/calculate`,
           data: {
             image: canvas.toDataURL('image/png'),
             dict_of_vars: dictOfVars,
