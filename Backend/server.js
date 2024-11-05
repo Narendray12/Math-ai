@@ -102,48 +102,38 @@ IMPORTANT: Response must be valid JSON. No explanation text, ONLY the JSON array
 }
 
 const app = express();
-app.use(cors({
-  origin: 'https://math-ai-eta.vercel.app', // your frontend URL
-  methods: ['GET', 'POST', 'OPTIONS'], // Include OPTIONS in allowed methods
-  allowedHeaders: ['Content-Type', 'Authorization'], // Allow headers required by your requests
-  credentials: true, // If you need cookies/auth headers
-}));
-
-// Optional: Explicitly handle OPTIONS preflight requests
-app.options('/calculate', cors({
+const corsOptions = {
   origin: 'https://math-ai-eta.vercel.app',
-  methods: ['POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-}));
+  credentials: true, // Allow credentials
+};
+
+app.use(cors(corsOptions));
 
 
 app.use(express.json({ limit: '50mb' }));
-const allowCors = fn => async (req, res) => {
-  res.setHeader('Access-Control-Allow-Credentials', true)
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  // another common pattern
-  // res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  )
-  if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return
-  }
-  return await fn(req, res)
-}
+// const allowCors = fn => async (req, res) => {
+//   res.setHeader('Access-Control-Allow-Credentials', true)
+//   res.setHeader('Access-Control-Allow-Origin', '*')
+//   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
+//   res.setHeader(
+//     'Access-Control-Allow-Headers',
+//     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+//   )
+//   if (req.method === 'OPTIONS') {
+//     res.status(200).end()
+//     return
+//   }
+//   return await fn(req, res)
+// }
 
-const handler = (req, res) => {
-  const d = new Date()
-  res.end(d.toString())
-} 
+// const handler = (req, res) => {
+//   const d = new Date()
+//   res.end(d.toString())
+// } 
 
 const analyzer = new ImageAnalyzer(process.env.GEMINI_KEY);
 
-app.post('/calculate',allowCors(handler), async (req, res) => {
+app.post('/calculate', async (req, res) => {
     try {
       const { image, dict_of_vars } = req.body;
   
@@ -158,7 +148,6 @@ app.post('/calculate',allowCors(handler), async (req, res) => {
       const base64Image = analyzer.prepareBase64Image(image);
       const results = await analyzer.analyzeImage(base64Image, dict_of_vars || {});
       
-      // Ensure we always return an array
       if (!Array.isArray(results)) {
         return res.status(500).json([{
           expr: "Error",
