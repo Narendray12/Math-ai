@@ -106,21 +106,28 @@ app.use(cors());
 
 app.use(express.json({ limit: '50mb' }));
 const allowCors = fn => async (req, res) => {
-  res.setHeader('Access-Control-Allow-Credentials', true)
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  // another common pattern
-  // res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
+  const allowedOrigin = 'https://math-ai-eta.vercel.app'; // Frontend origin
+
+  if (req.headers.origin === allowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  )
+  );
+
   if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return
+    // Send a 200 OK response for OPTIONS requests
+    res.status(200).end();
+    return;
   }
-  return await fn(req, res)
-}
+
+  return await fn(req, res);
+};
+
 
 const handler = (req, res) => {
   const d = new Date()
@@ -128,41 +135,39 @@ const handler = (req, res) => {
 } 
 
 const analyzer = new ImageAnalyzer(process.env.GEMINI_KEY);
+app.post('/calculate', allowCors(async (req, res) => {
+  try {
+    const { image, dict_of_vars } = req.body;
 
-app.post('/calculate',allowCors(handler), async (req, res) => {
-    try {
-      const { image, dict_of_vars } = req.body;
-  
-      if (!image) {
-        return res.status(400).json([{
-          expr: "Error",
-          result: "No image provided",
-          assign: false
-        }]);
-      }
-  
-      const base64Image = analyzer.prepareBase64Image(image);
-      const results = await analyzer.analyzeImage(base64Image, dict_of_vars || {});
-      
-      // Ensure we always return an array
-      if (!Array.isArray(results)) {
-        return res.status(500).json([{
-          expr: "Error",
-          result: "Invalid response format",
-          assign: false
-        }]);
-      }
-      
-      res.json(results);
-    } catch (error) {
-      console.error('Error processing request:', error);
-      res.status(500).json([{
+    if (!image) {
+      return res.status(400).json([{
         expr: "Error",
-        result: error.message || "An unknown error occurred",
+        result: "No image provided",
         assign: false
       }]);
     }
-  });
+
+    const base64Image = analyzer.prepareBase64Image(image);
+    const results = await analyzer.analyzeImage(base64Image, dict_of_vars || {});
+
+    if (!Array.isArray(results)) {
+      return res.status(500).json([{
+        expr: "Error",
+        result: "Invalid response format",
+        assign: false
+      }]);
+    }
+
+    res.json(results);
+  } catch (error) {
+    console.error('Error processing request:', error);
+    res.status(500).json([{
+      expr: "Error",
+      result: error.message || "An unknown error occurred",
+      assign: false
+    }]);
+  }
+}));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
