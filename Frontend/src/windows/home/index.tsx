@@ -224,7 +224,7 @@ export default function Home() {
         // axios.defaults.withCredentials=true;
         const response = await axios({
           method: 'post',
-          url: 'https://math-ai-server.vercel.app/calculate',
+          url: 'https://math-ai-backend-2.onrender.com/calculate',
           data: {
             image: canvas.toDataURL('image/png'),
             dict_of_vars: dictOfVars,
