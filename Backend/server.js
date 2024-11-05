@@ -102,13 +102,13 @@ IMPORTANT: Response must be valid JSON. No explanation text, ONLY the JSON array
 }
 
 const app = express();
-const corsOptions = {
-  origin: ['https://math-ai-eta.vercel.app', 'http://localhost:3000'],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  maxAge: 86400 // Cache preflight request for 24 hours
-};
+app.use(cors({
+  origin: '*',
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  allowedHeaders: '*'
+}));
 
 // Apply CORS middleware before your routes
 app.use(cors(corsOptions));
