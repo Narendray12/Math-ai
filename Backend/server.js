@@ -130,10 +130,10 @@ const handler = (req, res) => {
   const d = new Date()
   res.end(d.toString())
 } 
-
+app.use(allowCors(handler))
 const analyzer = new ImageAnalyzer(process.env.GEMINI_KEY);
 
-app.post('/calculate',allowCors(handler), async (req, res) => {
+app.post('/calculate', async (req, res) => {
     try {
       const { image, dict_of_vars } = req.body;
   
