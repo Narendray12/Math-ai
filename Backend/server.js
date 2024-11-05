@@ -103,34 +103,18 @@ IMPORTANT: Response must be valid JSON. No explanation text, ONLY the JSON array
 
 const app = express();
 const corsOptions = {
-  origin: 'https://math-ai-eta.vercel.app',
-  credentials: true, // Allow credentials
+  origin: ['https://math-ai-eta.vercel.app', 'http://localhost:3000'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400 // Cache preflight request for 24 hours
 };
 
+// Apply CORS middleware before your routes
 app.use(cors(corsOptions));
 
 
 app.use(express.json({ limit: '50mb' }));
-const allowCors = fn => async (req, res) => {
-  res.setHeader('Access-Control-Allow-Credentials', true)
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  )
-  if (req.method === 'OPTIONS') {
-    res.status(200).end()
-    return
-  }
-  return await fn(req, res)
-}
-
-const handler = (req, res) => {
-  const d = new Date()
-  res.end(d.toString())
-} 
-app.use(allowCors(handler))
 const analyzer = new ImageAnalyzer(process.env.GEMINI_KEY);
 
 app.post('/calculate', async (req, res) => {
