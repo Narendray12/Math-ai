@@ -1,5 +1,5 @@
 # Math-ai
-Math-ai is an AI-powered web application designed to solve mathematical problems ranging from basic arithmetic to complex equations. The app leverages machine learning and natural language processing to interpret user queries and provide accurate solutions in real-time.
+Math-ai is an AI-powered web application designed to solve mathematical problems ranging from basic arithmetic to complex equations. 
 
 # Features
 * AI-Powered Problem Solving: Automatically interpret and solve various mathematical problems including algebra, calculus, and geometry.
