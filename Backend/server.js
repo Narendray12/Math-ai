@@ -104,9 +104,19 @@ IMPORTANT: Response must be valid JSON. No explanation text, ONLY the JSON array
 const app = express();
 app.use(cors({
   origin: 'https://math-ai-eta.vercel.app', // your frontend URL
-  methods: ['GET', 'POST'], // Specify allowed methods if needed
-  allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers if needed
+  methods: ['GET', 'POST', 'OPTIONS'], // Include OPTIONS in allowed methods
+  allowedHeaders: ['Content-Type', 'Authorization'], // Allow headers required by your requests
+  credentials: true, // If you need cookies/auth headers
 }));
+
+// Optional: Explicitly handle OPTIONS preflight requests
+app.options('/calculate', cors({
+  origin: 'https://math-ai-eta.vercel.app',
+  methods: ['POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
+
 
 app.use(express.json({ limit: '50mb' }));
 const allowCors = fn => async (req, res) => {
