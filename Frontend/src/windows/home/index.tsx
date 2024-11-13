@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import Draggable from 'react-draggable';
 import { SWATCHES } from '../../../colors';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface GeneratedResult {
   expression: string;
@@ -27,6 +29,40 @@ interface SpeechRecognitionEventResult {
   };
 }
 
+const NotesBox = ({ 
+  position, 
+  content,
+  onContentChange,
+  onPositionChange 
+}: { 
+  position: { x: number; y: number };
+  content: string;
+  onContentChange: (content: string) => void;
+  onPositionChange: (position: { x: number; y: number }) => void;
+}) => {
+  return (
+    <Draggable
+      defaultPosition={position}
+      onStop={(_, data) => onPositionChange({ x: data.x, y: data.y })}
+    >
+      <div className="absolute z-20">
+        <Card className="w-64 bg-gray-900 bg-opacity-80 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-white">Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={content}
+              onChange={(e) => onContentChange(e.target.value)}
+              className="min-h-32 bg-transparent text-white border-gray-700"
+              placeholder="Add your notes here..."
+            />
+          </CardContent>
+        </Card>
+      </div>
+    </Draggable>
+  );
+};
 // Math Expression Component
 const MathExpression = ({ 
   expression, 
@@ -74,7 +110,11 @@ export default function Home() {
   const [latexExpression, setLatexExpression] = useState<Array<string>>([]);
   const [listening, setListening] = useState(false);
   const [transcribedText, setTranscribedText] = useState('');
-
+  const [showNotesBox, setShowNotesBox] = useState(false);
+  const [notesContent, setNotesContent] = useState('');
+  const [notesPosition, setNotesPosition] = useState({ x: 10, y: 10 });
+  const [calculationInput, setCalculationInput] = useState('');
+  const [showCalculationInput, setShowCalculationInput] = useState(false);
   // Clean up recognition on unmount
   useEffect(() => {
     return () => {
@@ -303,9 +343,17 @@ export default function Home() {
     }
   };
 
+  const addCalculationText = () => {
+    if (calculationInput.trim()) {
+      drawTextOnCanvas(calculationInput);
+      setCalculationInput('');
+      setShowCalculationInput(false);
+    }
+  };
+
   return (
     <>
-      <div className="grid grid-cols-4 gap-2 mt-2">
+      <div className="grid grid-cols-6 gap-2 mt-2">
         <Button
           onClick={() => setReset(true)}
           className="z-20 bg-black text-white hover:bg-gray-800"
@@ -342,7 +390,56 @@ export default function Home() {
         >
           {listening ? 'Stop Listening' : 'Start Listening'}
         </Button>
+
+        <Button
+          onClick={() => setShowNotesBox(!showNotesBox)}
+          className="z-20 bg-black text-white hover:bg-gray-800"
+          variant="default"
+        >
+          {showNotesBox ? 'Hide Notes' : 'Show Notes'}
+        </Button>
+
+        <Button
+          onClick={() => setShowCalculationInput(!showCalculationInput)}
+          className="z-20 bg-black text-white hover:bg-gray-800"
+          variant="default"
+        >
+          {showCalculationInput ? 'Hide Text Input' : 'Add Text Input'}
+        </Button>
       </div>
+
+      {showCalculationInput && (
+        <div className="fixed top-20 right-4 z-20 w-64">
+          <Card className="bg-gray-900 bg-opacity-80 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-white">Add Calculation Text</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Textarea
+                value={calculationInput}
+                onChange={(e) => setCalculationInput(e.target.value)}
+                className="bg-transparent text-white border-gray-700"
+                placeholder="Type your calculation here..."
+              />
+              <Button 
+                onClick={addCalculationText}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Add to Canvas
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {showNotesBox && (
+        <NotesBox
+          position={notesPosition}
+          content={notesContent}
+          onContentChange={setNotesContent}
+          onPositionChange={setNotesPosition}
+        />
+      )}
 
       <canvas
         ref={canvasRef}
