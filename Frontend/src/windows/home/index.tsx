@@ -22,7 +22,7 @@ interface Response {
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { listening, transcribedText, toggleListening } = useSpeechRecognition();
+  const { listening, toggleListening } = useSpeechRecognition();
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState("rgb(255, 255, 255)");
   const [reset, setReset] = useState(false);
