@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NotesBox } from "../home../../../components/NotesBox";
-import  MathExpression  from "../home../../../components/MathExpression";
+import  {MathExpression}  from "../home../../../components/MathExpression";
 import { useSpeechRecognition } from "../home../../../hooks/useSpeechRecognition";
 import { SWATCHES } from "../../../colors";
 
@@ -212,76 +212,80 @@ export default function Home() {
 
   return (
     <>
-      <div className="grid grid-cols-6 gap-2 mt-2">
-        <Button
-          onClick={() => setReset(true)}
-          className="z-20 bg-black text-white hover:bg-gray-800"
-          variant="default"
-        >
-          Reset
-        </Button>
+      <div className="fixed top-0 left-0 right-0 z-50 p-4 bg-gray-900 bg-opacity-90 backdrop-blur-sm border-b border-gray-700">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="flex items-center space-x-4">
+            <Button
+              onClick={() => setReset(true)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              variant="default"
+            >
+              Reset
+            </Button>
 
-        <Group className="z-20">
-          {SWATCHES.map((swatch) => (
-            <ColorSwatch
-              key={swatch}
-              color={swatch}
-              onClick={() => setColor(swatch)}
-              className="cursor-pointer hover:scale-110 transition-transform"
-            />
-          ))}
-        </Group>
+            <Group>
+              {SWATCHES.map((swatch) => (
+                <ColorSwatch
+                  key={swatch}
+                  color={swatch}
+                  onClick={() => setColor(swatch)}
+                  className="cursor-pointer hover:scale-110 transition-transform"
+                />
+              ))}
+            </Group>
 
-        <Button
-          onClick={runRoute}
-          className={`z-20 text-white hover:bg-gray-800 ${
-            isLoading ? "bg-green-500" : "bg-black"
-          }`}
-          variant="default"
-        >
-          {isLoading ? "Processing..." : "Run"}
-        </Button>
+            <Button
+              onClick={runRoute}
+              className={`text-white ${
+                isLoading ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"
+              }`}
+              variant="default"
+            >
+              {isLoading ? "Processing..." : "Run"}
+            </Button>
 
-        <Button
-          onClick={toggleListening}
-          className={`z-20 text-white transition-colors ${
-            listening
-              ? "bg-green-500 hover:bg-green-600"
-              : "bg-black hover:bg-gray-800"
-          }`}
-          variant="default"
-        >
-          {listening ? "Stop Listening" : "Start Listening"}
-        </Button>
+            <Button
+              onClick={toggleListening}
+              className={`text-white ${
+                listening ? "bg-green-600 hover:bg-green-700" : "bg-gray-700 hover:bg-gray-800"
+              }`}
+              variant="default"
+            >
+              {listening ? "Stop Listening" : "Start Listening"}
+            </Button>
 
-        <Button
-          onClick={() => setShowNotesBox(!showNotesBox)}
-          className="z-20 bg-black text-white hover:bg-gray-800"
-          variant="default"
-        >
-          {showNotesBox ? "Hide Notes" : "Show Notes"}
-        </Button>
+            <Button
+              onClick={() => setShowNotesBox(!showNotesBox)}
+              className="bg-gray-700 hover:bg-gray-800 text-white"
+              variant="default"
+            >
+              {showNotesBox ? "Hide Notes" : "Show Notes"}
+            </Button>
 
-        <Button
-          onClick={() => setShowCalculationInput(!showCalculationInput)}
-          className="z-20 bg-black text-white hover:bg-gray-800"
-          variant="default"
-        >
-          {showCalculationInput ? "Hide Text Input" : "Add Text Input"}
-        </Button>
+            <Button
+              onClick={() => setShowCalculationInput(!showCalculationInput)}
+              className="bg-gray-700 hover:bg-gray-800 text-white"
+              variant="default"
+            >
+              {showCalculationInput ? "Hide Text Input" : "Add Text Input"}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {showCalculationInput && (
-        <div className="fixed top-20 right-4 z-20 w-64">
-          <Card className="bg-gray-900 bg-opacity-80 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-white">Add Calculation Text</CardTitle>
+        <div className="fixed top-20 right-4 z-20 w-72">
+          <Card className="bg-gray-800 bg-opacity-90 backdrop-blur-sm border border-gray-700">
+            <CardHeader className="p-4 border-b border-gray-700">
+              <CardTitle className="text-lg font-semibold text-white">
+                Add Calculation Text
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="p-4 space-y-2">
               <Textarea
                 value={calculationInput}
                 onChange={(e) => setCalculationInput(e.target.value)}
-                className="bg-transparent text-white border-gray-700"
+                className="bg-transparent text-white border-gray-700 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                 placeholder="Type your calculation here..."
               />
               <Button
@@ -307,7 +311,7 @@ export default function Home() {
       <canvas
         ref={canvasRef}
         id="canvas"
-        className="absolute top-0 left-0 w-full h-full"
+        className="absolute top-0 left-0 w-full h-full bg-gray-900"
         onMouseDown={startDrawing}
         onMouseMove={draw}
         onMouseUp={stopDrawing}

@@ -6,7 +6,7 @@ interface MathExpressionProps {
   onPositionChange: (position: { x: number; y: number }) => void;
 }
 
-const MathExpression = ({
+export const MathExpression = ({
   expression,
   position,
   onPositionChange,
@@ -26,13 +26,13 @@ const MathExpression = ({
       defaultPosition={position}
       onStop={(_, data) => onPositionChange({ x: data.x, y: data.y })}
     >
-      <div className="absolute p-4 bg-gray-900 bg-opacity-80 rounded-lg shadow-lg backdrop-blur-sm cursor-grab active:cursor-grabbing hover:scale-105 transition-transform">
-        <div className="text-xl font-serif tracking-wide text-white">
-          {formatExpression(expression)}
+      <div className="absolute z-20 shadow-lg">
+        <div className="p-4 bg-gray-800 bg-opacity-90 rounded-lg backdrop-blur-sm border border-gray-700 cursor-grab active:cursor-grabbing hover:scale-105 transition-transform">
+          <div className="text-xl font-mono text-white">
+            {formatExpression(expression)}
+          </div>
         </div>
       </div>
     </Draggable>
   );
 };
-
-export default MathExpression;
