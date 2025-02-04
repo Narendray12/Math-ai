@@ -1,11 +1,13 @@
-import { ColorSwatch, Group } from '@mantine/core';
-import { Button } from '@/components/ui/button';
-import { useEffect, useRef, useState } from 'react';
-import axios from 'axios';
-import Draggable from 'react-draggable';
-import { SWATCHES } from '../../../colors';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useRef, useState } from "react";
+import axios from "axios";
+import { ColorSwatch, Group } from "@mantine/core";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { NotesBox } from "../home../../../components/NotesBox";
+import  MathExpression  from "../home../../../components/MathExpression";
+import { useSpeechRecognition } from "../home../../../hooks/useSpeechRecognition";
+import { SWATCHES } from "../../../colors";
 
 interface GeneratedResult {
   expression: string;
@@ -18,176 +20,31 @@ interface Response {
   assign: boolean;
 }
 
-interface SpeechRecognitionEventResult {
-  resultIndex: number;
-  results: {
-    [index: number]: {
-      [index: number]: {
-        transcript: string;
-      };
-    };
-  };
-}
-
-const NotesBox = ({ 
-  position, 
-  content,
-  onContentChange,
-  onPositionChange 
-}: { 
-  position: { x: number; y: number };
-  content: string;
-  onContentChange: (content: string) => void;
-  onPositionChange: (position: { x: number; y: number }) => void;
-}) => {
-  return (
-    <Draggable
-      defaultPosition={position}
-      onStop={(_, data) => onPositionChange({ x: data.x, y: data.y })}
-    >
-      <div className="absolute z-20">
-        <Card className="w-64 bg-gray-900 bg-opacity-80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-white">Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              value={content}
-              onChange={(e) => onContentChange(e.target.value)}
-              className="min-h-32 bg-transparent text-white border-gray-700"
-              placeholder="Add your notes here..."
-            />
-          </CardContent>
-        </Card>
-      </div>
-    </Draggable>
-  );
-};
-// Math Expression Component
-const MathExpression = ({ 
-  expression, 
-  position, 
-  onPositionChange 
-}: { 
-  expression: string;
-  position: { x: number; y: number };
-  onPositionChange: (position: { x: number; y: number }) => void;
-}) => {
-  // Format the expression for better readability
-  const formatExpression = (expr: string) => {
-    return expr
-      .replace(/\\(.+?)\{(.+?)\}/g, '$2') // Remove LaTeX commands
-      .replace(/=/g, ' = ')
-      .replace(/\+/g, ' + ')
-      .replace(/\-/g, ' - ')
-      .replace(/\*/g, ' × ')
-      .replace(/\//g, ' ÷ ');
-  };
-
-  return (
-    <Draggable
-      defaultPosition={position}
-      onStop={(_, data) => onPositionChange({ x: data.x, y: data.y })}
-    >
-      <div className="absolute p-4 bg-gray-900 bg-opacity-80 rounded-lg shadow-lg backdrop-blur-sm cursor-grab active:cursor-grabbing hover:scale-105 transition-transform">
-        <div className="text-xl font-serif tracking-wide text-white">
-          {formatExpression(expression)}
-        </div>
-      </div>
-    </Draggable>
-  );
-};
-
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const recognitionRef = useRef<any>(null);
+  const { listening, transcribedText, toggleListening } = useSpeechRecognition();
   const [isDrawing, setIsDrawing] = useState(false);
-  const [color, setColor] = useState('rgb(255, 255, 255)');
+  const [color, setColor] = useState("rgb(255, 255, 255)");
   const [reset, setReset] = useState(false);
   const [dictOfVars, setDictOfVars] = useState({});
   const [result, setResult] = useState<GeneratedResult>();
   const [latexPosition, setLatexPosition] = useState({ x: 10, y: 200 });
   const [latexExpression, setLatexExpression] = useState<Array<string>>([]);
-  const [listening, setListening] = useState(false);
-  const [transcribedText, setTranscribedText] = useState('');
   const [showNotesBox, setShowNotesBox] = useState(false);
-  const [notesContent, setNotesContent] = useState('');
+  const [notesContent, setNotesContent] = useState("");
   const [notesPosition, setNotesPosition] = useState({ x: 10, y: 10 });
-  const [calculationInput, setCalculationInput] = useState('');
+  const [calculationInput, setCalculationInput] = useState("");
   const [showCalculationInput, setShowCalculationInput] = useState(false);
-  // Clean up recognition on unmount
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, []);
-
-  const toggleListening = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser.');
-      return;
-    }
-
-    if (listening) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-        recognitionRef.current = null;
-      }
-      setListening(false);
-    } else {
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      recognition.onstart = () => {
-        setListening(true);
-      };
-
-      recognition.onend = () => {
-        setListening(false);
-      };
-
-      recognition.onresult = (event: SpeechRecognitionEventResult) => {
-        const transcript = event.results[event.resultIndex][0].transcript;
-        setTranscribedText(transcript);
-        drawTextOnCanvas(transcript);
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setListening(false);
-      };
-
-      try {
-        recognition.start();
-        recognitionRef.current = recognition;
-      } catch (error) {
-        console.error('Error starting speech recognition:', error);
-        setListening(false);
-      }
-    }
-  };
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
-      canvas.setAttribute('aria-label', `Canvas content: ${transcribedText}`);
-    }
-  }, [transcribedText]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (ctx) {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight - canvas.offsetTop;
-        ctx.lineCap = 'round';
+        ctx.lineCap = "round";
         ctx.lineWidth = 3;
       }
     }
@@ -218,7 +75,7 @@ export default function Home() {
   const resetCanvas = () => {
     const canvas = canvasRef.current;
     if (canvas) {
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
@@ -228,8 +85,8 @@ export default function Home() {
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (canvas) {
-      canvas.style.background = 'black';
-      const ctx = canvas.getContext('2d');
+      canvas.style.background = "black";
+      const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.beginPath();
         ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
@@ -240,10 +97,10 @@ export default function Home() {
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
-    
+
     const canvas = canvasRef.current;
     if (canvas) {
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.strokeStyle = color;
         ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
@@ -257,21 +114,20 @@ export default function Home() {
   };
 
   const runRoute = async () => {
+    setIsLoading(true);
     const canvas = canvasRef.current;
 
     if (canvas) {
       try {
-        // axios.defaults.withCredentials=true;
         const response = await axios({
-          method: 'post',
-          url: 'https://math-ai-backend-2.onrender.com/calculate',
+          method: "post",
+          url: "https://math-ai-backend-2.onrender.com/calculate",
           data: {
-            image: canvas.toDataURL('image/png'),
+            image: canvas.toDataURL("image/png"),
             dict_of_vars: dictOfVars,
           },
         });
         const results: Response[] = response.data;
-
         results.forEach((data: Response) => {
           if (data.assign === true) {
             setDictOfVars((prevVars) => ({
@@ -281,14 +137,14 @@ export default function Home() {
           }
         });
 
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         let minX = canvas.width,
-            minY = canvas.height,
-            maxX = 0,
-            maxY = 0;
+          minY = canvas.height,
+          maxX = 0,
+          maxY = 0;
 
         for (let y = 0; y < canvas.height; y++) {
           for (let x = 0; x < canvas.width; x++) {
@@ -315,8 +171,11 @@ export default function Home() {
             });
           }, 1000);
         });
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       } catch (error) {
-        console.error('Error processing image:', error);
+        console.error("Error processing image:", error);
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -324,11 +183,11 @@ export default function Home() {
   const drawTextOnCanvas = (text: string) => {
     const canvas = canvasRef.current;
     if (canvas) {
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        ctx.font = '18px serif';
+        ctx.font = "18px serif";
         ctx.fillStyle = color;
 
         const textWidth = ctx.measureText(text).width;
@@ -346,7 +205,7 @@ export default function Home() {
   const addCalculationText = () => {
     if (calculationInput.trim()) {
       drawTextOnCanvas(calculationInput);
-      setCalculationInput('');
+      setCalculationInput("");
       setShowCalculationInput(false);
     }
   };
@@ -361,7 +220,7 @@ export default function Home() {
         >
           Reset
         </Button>
-        
+
         <Group className="z-20">
           {SWATCHES.map((swatch) => (
             <ColorSwatch
@@ -372,23 +231,27 @@ export default function Home() {
             />
           ))}
         </Group>
-        
+
         <Button
           onClick={runRoute}
-          className="z-20 bg-black text-white hover:bg-gray-800"
+          className={`z-20 text-white hover:bg-gray-800 ${
+            isLoading ? "bg-green-500" : "bg-black"
+          }`}
           variant="default"
         >
-          Run
+          {isLoading ? "Processing..." : "Run"}
         </Button>
-        
-        <Button 
-          onClick={toggleListening} 
+
+        <Button
+          onClick={toggleListening}
           className={`z-20 text-white transition-colors ${
-            listening ? 'bg-green-500 hover:bg-green-600' : 'bg-black hover:bg-gray-800'
-          }`} 
+            listening
+              ? "bg-green-500 hover:bg-green-600"
+              : "bg-black hover:bg-gray-800"
+          }`}
           variant="default"
         >
-          {listening ? 'Stop Listening' : 'Start Listening'}
+          {listening ? "Stop Listening" : "Start Listening"}
         </Button>
 
         <Button
@@ -396,7 +259,7 @@ export default function Home() {
           className="z-20 bg-black text-white hover:bg-gray-800"
           variant="default"
         >
-          {showNotesBox ? 'Hide Notes' : 'Show Notes'}
+          {showNotesBox ? "Hide Notes" : "Show Notes"}
         </Button>
 
         <Button
@@ -404,7 +267,7 @@ export default function Home() {
           className="z-20 bg-black text-white hover:bg-gray-800"
           variant="default"
         >
-          {showCalculationInput ? 'Hide Text Input' : 'Add Text Input'}
+          {showCalculationInput ? "Hide Text Input" : "Add Text Input"}
         </Button>
       </div>
 
@@ -421,7 +284,7 @@ export default function Home() {
                 className="bg-transparent text-white border-gray-700"
                 placeholder="Type your calculation here..."
               />
-              <Button 
+              <Button
                 onClick={addCalculationText}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
               >
@@ -451,14 +314,15 @@ export default function Home() {
         onMouseOut={stopDrawing}
       />
 
-      {latexExpression && latexExpression.map((latex, index) => (
-        <MathExpression
-          key={index}
-          expression={latex}
-          position={latexPosition}
-          onPositionChange={setLatexPosition}
-        />
-      ))}
+      {latexExpression &&
+        latexExpression.map((latex, index) => (
+          <MathExpression
+            key={index}
+            expression={latex}
+            position={latexPosition}
+            onPositionChange={setLatexPosition}
+          />
+        ))}
     </>
   );
 }
