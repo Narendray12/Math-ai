@@ -20,27 +20,32 @@ interface Response {
   assign: boolean;
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { listening, transcribedText, toggleListening } = useSpeechRecognition();
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [color, setColor] = useState("rgb(255, 255, 255)");
-  const [reset, setReset] = useState(false);
-  const [dictOfVars, setDictOfVars] = useState({});
-  const [result, setResult] = useState<GeneratedResult>();
-  const [latexPosition, setLatexPosition] = useState({ x: 10, y: 200 });
+  const [isDrawing, setIsDrawing] = useState<boolean>(false);
+  const [color, setColor] = useState<string>("rgb(255, 255, 255)");
+  const [reset, setReset] = useState<boolean>(false);
+  const [dictOfVars, setDictOfVars] = useState<Record<string, string>>({});
+  const [result, setResult] = useState<GeneratedResult | undefined>();
+  const [latexPosition, setLatexPosition] = useState<Position>({ x: 10, y: 200 });
   const [latexExpression, setLatexExpression] = useState<Array<string>>([]);
-  const [showNotesBox, setShowNotesBox] = useState(false);
-  const [notesContent, setNotesContent] = useState("");
-  const [notesPosition, setNotesPosition] = useState({ x: 10, y: 10 });
-  const [calculationInput, setCalculationInput] = useState("");
-  const [showCalculationInput, setShowCalculationInput] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [transcribedCanvasText, setTranscribedCanvasText] = useState(""); 
+  const [showNotesBox, setShowNotesBox] = useState<boolean>(false);
+  const [notesContent, setNotesContent] = useState<string>("");
+  const [notesPosition, setNotesPosition] = useState<Position>({ x: 10, y: 10 });
+  const [calculationInput, setCalculationInput] = useState<string>("");
+  const [showCalculationInput, setShowCalculationInput] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [transcribedCanvasText, setTranscribedCanvasText] = useState<string>("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [imageLoaded, setImageLoaded] = useState(false);
-
+  const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   useEffect(() => {
     if (transcribedText && !listening) {
       setTranscribedCanvasText(transcribedText);
@@ -70,7 +75,7 @@ export default function Home() {
       setReset(false);
       setUploadedImage(null);
       setImageLoaded(false);
-      
+
       // Reset canvas background to black
       const canvas = canvasRef.current;
       if (canvas) {
@@ -86,55 +91,41 @@ export default function Home() {
   }, [result]);
 
   const formatMathExpression = (expression: string, answer: string): string => {
-    // Determine if it's a complex expression
-    const isComplex = expression.length > 30 || expression.includes('\n');
-    
-    // For complex expressions or long text, format with careful line breaks
+    const isComplex = expression.length > 30 || expression.includes("\n");
+
     if (isComplex) {
-      // First clean up any existing line breaks or excessive spaces
-      const cleanedExpression = expression.replace(/\s+/g, ' ').trim();
-      
-      // For mathematical expressions, try to break at operators
-      // Break after =, +, -, etc. when followed by a non-operator
-      const formattedLines = [];
-      let currentLine = '';
-      const maxLineLength = 25; // Shorter max length for better readability
-      
-      // Split by characters to have more control
+      const cleanedExpression = expression.replace(/\s+/g, " ").trim();
+      const formattedLines: string[] = [];
+      let currentLine = "";
+      const maxLineLength = 25;
+
       for (let i = 0; i < cleanedExpression.length; i++) {
         const char = cleanedExpression[i];
         currentLine += char;
-        
-        // Good places to break: after operators like +, -, *, /, =
+
         const isOperator = /[+\-*/=]/.test(char);
-        const nextCharIsDigitOrLetter = i < cleanedExpression.length - 1 && /[a-zA-Z0-9]/.test(cleanedExpression[i+1]);
-        
-        // Break if we're at an operator followed by a non-operator and the line is getting long
+        const nextCharIsDigitOrLetter =
+          i < cleanedExpression.length - 1 && /[a-zA-Z0-9]/.test(cleanedExpression[i + 1]);
+
         if (currentLine.length >= maxLineLength && isOperator && nextCharIsDigitOrLetter) {
           formattedLines.push(currentLine);
-          currentLine = '';
-        }
-        // Also break at spaces if line is very long
-        else if (currentLine.length >= maxLineLength && char === ' ') {
+          currentLine = "";
+        } else if (currentLine.length >= maxLineLength && char === " ") {
           formattedLines.push(currentLine);
-          currentLine = '';
+          currentLine = "";
         }
       }
-      
-      // Add any remaining content
+
       if (currentLine) {
         formattedLines.push(currentLine);
       }
-      
-      // Add the answer on its own line with clear separation
+
       if (answer) {
         formattedLines.push(`= ${answer}`);
       }
-      
-      return formattedLines.join('\n');
-    } 
-    // For simpler expressions, keep on a single line with the answer below
-    else {
+
+      return formattedLines.join("\n");
+    } else {
       return `${expression}\n= ${answer}`;
     }
   };
@@ -142,7 +133,6 @@ export default function Home() {
   const renderLatexToCanvas = (expression: string, answer: string) => {
     const formattedExpression = formatMathExpression(expression, answer);
     setLatexExpression((prev) => [...prev, formattedExpression]);
-    // Don't reset canvas here as we want to keep the results visible
   };
 
   const resetCanvas = () => {
@@ -153,13 +143,12 @@ export default function Home() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
-    setTranscribedCanvasText(""); // Clear transcribed text
+    setTranscribedCanvasText("");
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (canvas) {
-      // Don't change the background if we have an image loaded
       if (!imageLoaded) {
         canvas.style.background = "black";
       }
@@ -196,10 +185,8 @@ export default function Home() {
 
     if (canvas) {
       try {
-        // Get canvas data URL
         const dataUrl = canvas.toDataURL("image/png");
-        
-        // Make the API request
+
         const response = await axios({
           method: "post",
           url: "https://math-ai-backend-2.onrender.com/calculate",
@@ -209,10 +196,9 @@ export default function Home() {
             text: transcribedCanvasText,
           },
         });
-        
+
         const results: Response[] = response.data;
-        
-        // Process variable assignments
+
         results.forEach((data: Response) => {
           if (data.assign === true) {
             setDictOfVars((prevVars) => ({
@@ -222,7 +208,6 @@ export default function Home() {
           }
         });
 
-        // Calculate position for results
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
@@ -232,7 +217,6 @@ export default function Home() {
           maxX = 0,
           maxY = 0;
 
-        // Find the bounds of drawn content
         let foundContent = false;
         for (let y = 0; y < canvas.height; y++) {
           for (let x = 0; x < canvas.width; x++) {
@@ -247,7 +231,6 @@ export default function Home() {
           }
         }
 
-        // If we found content, use its center, otherwise use canvas center
         let centerX, centerY;
         if (foundContent) {
           centerX = (minX + maxX) / 2;
@@ -258,18 +241,12 @@ export default function Home() {
         }
 
         setLatexPosition({ x: centerX, y: centerY });
-        
-        // Clear the canvas after processing to make room for results
+
         resetCanvas();
-        
-        // Set background back to black
         canvas.style.background = "black";
-        
-        // Reset image state
         setUploadedImage(null);
         setImageLoaded(false);
-        
-        // Process and display results
+
         if (results.length > 0) {
           results.forEach((data: Response, index) => {
             setTimeout(() => {
@@ -277,12 +254,11 @@ export default function Home() {
                 expression: data.expr,
                 answer: data.result,
               });
-            }, 500 * (index + 1));  // Stagger the display of multiple results
+            }, 500 * (index + 1));
           });
         } else {
           console.log("No results returned from API");
         }
-        
       } catch (error) {
         console.error("Error processing image:", error);
         alert("Error processing the image. Please try again.");
@@ -297,7 +273,6 @@ export default function Home() {
     if (canvas) {
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        // If we have an image loaded, don't clear the canvas
         if (!imageLoaded) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
@@ -325,70 +300,55 @@ export default function Home() {
     }
   };
 
-  // Improved image upload handler
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    // Read the file
+  
     const reader = new FileReader();
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
       setUploadedImage(dataUrl);
-      
-      // Draw the image on the canvas without clearing existing content
+  
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        
-        // Don't change background color
-        // Don't clear the canvas
-        
+  
         const img = new Image();
         img.onload = () => {
-          // Calculate dimensions to fit the image within 100x100px
           const maxWidth = 100;
           const maxHeight = 100;
-          
+  
           let width = img.width;
           let height = img.height;
-          
-          // Calculate aspect ratio for resizing
+  
           const aspectRatio = img.width / img.height;
-          
+  
           if (width > maxWidth) {
             width = maxWidth;
             height = width / aspectRatio;
           }
-          
+  
           if (height > maxHeight) {
             height = maxHeight;
             width = height * aspectRatio;
           }
-          
-          // Center the image on the canvas
+  
           const x = (canvas.width - width) / 2;
           const y = (canvas.height - height) / 2;
-          
-          // Draw the image without clearing the canvas
+  
           ctx.drawImage(img, x, y, width, height);
-          
-          // Mark the image as loaded
           setImageLoaded(true);
         };
-        
+  
         img.src = dataUrl;
       }
     };
-    
+  
     reader.readAsDataURL(file);
-    
-    // Reset the file input to allow re-selecting the same file
-    e.target.value = '';
+    e.target.value = "";
   };
-    
-  // Function to open file dialog
+
   const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
@@ -454,7 +414,6 @@ export default function Home() {
               {showCalculationInput ? "Hide Text Input" : "Add Text Input"}
             </Button>
 
-            {/* Image Upload Button */}
             <Button
               onClick={triggerFileInput}
               className="bg-purple-600 hover:bg-purple-700 text-white"
