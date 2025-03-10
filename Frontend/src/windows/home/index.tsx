@@ -43,8 +43,7 @@ export default function Home() {
   const [showCalculationInput, setShowCalculationInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [transcribedCanvasText, setTranscribedCanvasText] = useState<string>("");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [, setUploadedImage] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   useEffect(() => {
     if (transcribedText && !listening) {
