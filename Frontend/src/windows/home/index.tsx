@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NotesBox } from "../home../../../components/NotesBox";
-import  {MathExpression}  from "../home../../../components/MathExpression";
+import { MathExpression } from "../home../../../components/MathExpression";
 import { useSpeechRecognition } from "../home../../../hooks/useSpeechRecognition";
 import { SWATCHES } from "../../../colors";
 
@@ -22,7 +22,8 @@ interface Response {
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { listening, toggleListening } = useSpeechRecognition();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { listening, transcribedText, toggleListening } = useSpeechRecognition();
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState("rgb(255, 255, 255)");
   const [reset, setReset] = useState(false);
@@ -36,6 +37,16 @@ export default function Home() {
   const [calculationInput, setCalculationInput] = useState("");
   const [showCalculationInput, setShowCalculationInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [transcribedCanvasText, setTranscribedCanvasText] = useState(""); 
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    if (transcribedText && !listening) {
+      setTranscribedCanvasText(transcribedText);
+      drawTextOnCanvas(transcribedText);
+    }
+  }, [transcribedText, listening]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -57,6 +68,14 @@ export default function Home() {
       setResult(undefined);
       setDictOfVars({});
       setReset(false);
+      setUploadedImage(null);
+      setImageLoaded(false);
+      
+      // Reset canvas background to black
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.style.background = "black";
+      }
     }
   }, [reset]);
 
@@ -66,10 +85,64 @@ export default function Home() {
     }
   }, [result]);
 
+  const formatMathExpression = (expression: string, answer: string): string => {
+    // Determine if it's a complex expression
+    const isComplex = expression.length > 30 || expression.includes('\n');
+    
+    // For complex expressions or long text, format with careful line breaks
+    if (isComplex) {
+      // First clean up any existing line breaks or excessive spaces
+      const cleanedExpression = expression.replace(/\s+/g, ' ').trim();
+      
+      // For mathematical expressions, try to break at operators
+      // Break after =, +, -, etc. when followed by a non-operator
+      const formattedLines = [];
+      let currentLine = '';
+      const maxLineLength = 25; // Shorter max length for better readability
+      
+      // Split by characters to have more control
+      for (let i = 0; i < cleanedExpression.length; i++) {
+        const char = cleanedExpression[i];
+        currentLine += char;
+        
+        // Good places to break: after operators like +, -, *, /, =
+        const isOperator = /[+\-*/=]/.test(char);
+        const nextCharIsDigitOrLetter = i < cleanedExpression.length - 1 && /[a-zA-Z0-9]/.test(cleanedExpression[i+1]);
+        
+        // Break if we're at an operator followed by a non-operator and the line is getting long
+        if (currentLine.length >= maxLineLength && isOperator && nextCharIsDigitOrLetter) {
+          formattedLines.push(currentLine);
+          currentLine = '';
+        }
+        // Also break at spaces if line is very long
+        else if (currentLine.length >= maxLineLength && char === ' ') {
+          formattedLines.push(currentLine);
+          currentLine = '';
+        }
+      }
+      
+      // Add any remaining content
+      if (currentLine) {
+        formattedLines.push(currentLine);
+      }
+      
+      // Add the answer on its own line with clear separation
+      if (answer) {
+        formattedLines.push(`= ${answer}`);
+      }
+      
+      return formattedLines.join('\n');
+    } 
+    // For simpler expressions, keep on a single line with the answer below
+    else {
+      return `${expression}\n= ${answer}`;
+    }
+  };
+
   const renderLatexToCanvas = (expression: string, answer: string) => {
-    const formattedExpression = `${expression} = ${answer}`;
-    setLatexExpression([...latexExpression, formattedExpression]);
-    resetCanvas();
+    const formattedExpression = formatMathExpression(expression, answer);
+    setLatexExpression((prev) => [...prev, formattedExpression]);
+    // Don't reset canvas here as we want to keep the results visible
   };
 
   const resetCanvas = () => {
@@ -80,12 +153,16 @@ export default function Home() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
+    setTranscribedCanvasText(""); // Clear transcribed text
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (canvas) {
-      canvas.style.background = "black";
+      // Don't change the background if we have an image loaded
+      if (!imageLoaded) {
+        canvas.style.background = "black";
+      }
       const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.beginPath();
@@ -119,15 +196,23 @@ export default function Home() {
 
     if (canvas) {
       try {
+        // Get canvas data URL
+        const dataUrl = canvas.toDataURL("image/png");
+        
+        // Make the API request
         const response = await axios({
           method: "post",
           url: "https://math-ai-backend-2.onrender.com/calculate",
           data: {
-            image: canvas.toDataURL("image/png"),
+            image: dataUrl,
             dict_of_vars: dictOfVars,
+            text: transcribedCanvasText,
           },
         });
+        
         const results: Response[] = response.data;
+        
+        // Process variable assignments
         results.forEach((data: Response) => {
           if (data.assign === true) {
             setDictOfVars((prevVars) => ({
@@ -137,6 +222,7 @@ export default function Home() {
           }
         });
 
+        // Calculate position for results
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
@@ -146,6 +232,8 @@ export default function Home() {
           maxX = 0,
           maxY = 0;
 
+        // Find the bounds of drawn content
+        let foundContent = false;
         for (let y = 0; y < canvas.height; y++) {
           for (let x = 0; x < canvas.width; x++) {
             const i = (y * canvas.width + x) * 4;
@@ -154,26 +242,50 @@ export default function Home() {
               minY = Math.min(minY, y);
               maxX = Math.max(maxX, x);
               maxY = Math.max(maxY, y);
+              foundContent = true;
             }
           }
         }
 
-        const centerX = (minX + maxX) / 2;
-        const centerY = (minY + maxY) / 2;
+        // If we found content, use its center, otherwise use canvas center
+        let centerX, centerY;
+        if (foundContent) {
+          centerX = (minX + maxX) / 2;
+          centerY = (minY + maxY) / 2;
+        } else {
+          centerX = canvas.width / 2;
+          centerY = canvas.height / 2;
+        }
 
         setLatexPosition({ x: centerX, y: centerY });
-
-        results.forEach((data: Response) => {
-          setTimeout(() => {
-            setResult({
-              expression: data.expr,
-              answer: data.result,
-            });
-          }, 1000);
-        });
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        
+        // Clear the canvas after processing to make room for results
+        resetCanvas();
+        
+        // Set background back to black
+        canvas.style.background = "black";
+        
+        // Reset image state
+        setUploadedImage(null);
+        setImageLoaded(false);
+        
+        // Process and display results
+        if (results.length > 0) {
+          results.forEach((data: Response, index) => {
+            setTimeout(() => {
+              setResult({
+                expression: data.expr,
+                answer: data.result,
+              });
+            }, 500 * (index + 1));  // Stagger the display of multiple results
+          });
+        } else {
+          console.log("No results returned from API");
+        }
+        
       } catch (error) {
         console.error("Error processing image:", error);
+        alert("Error processing the image. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -185,7 +297,10 @@ export default function Home() {
     if (canvas) {
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // If we have an image loaded, don't clear the canvas
+        if (!imageLoaded) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
 
         ctx.font = "18px serif";
         ctx.fillStyle = color;
@@ -208,6 +323,115 @@ export default function Home() {
       setCalculationInput("");
       setShowCalculationInput(false);
     }
+  };
+
+  // Improved image upload handler
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Read the file
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setUploadedImage(dataUrl);
+      
+      // Draw the image on the canvas without clearing existing content
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        
+        // Don't change background color
+        // Don't clear the canvas
+        
+        const img = new Image();
+        img.onload = () => {
+          // Calculate dimensions to fit the image within 100x100px
+          const maxWidth = 100;
+          const maxHeight = 100;
+          
+          let width = img.width;
+          let height = img.height;
+          
+          // Calculate aspect ratio for resizing
+          const aspectRatio = img.width / img.height;
+          
+          if (width > maxWidth) {
+            width = maxWidth;
+            height = width / aspectRatio;
+          }
+          
+          if (height > maxHeight) {
+            height = maxHeight;
+            width = height * aspectRatio;
+          }
+          
+          // Center the image on the canvas
+          const x = (canvas.width - width) / 2;
+          const y = (canvas.height - height) / 2;
+          
+          // Draw the image without clearing the canvas
+          ctx.drawImage(img, x, y, width, height);
+          
+          // Mark the image as loaded
+          setImageLoaded(true);
+        };
+        
+        img.src = dataUrl;
+      }
+    };
+    
+    reader.readAsDataURL(file);
+    
+    // Reset the file input to allow re-selecting the same file
+    e.target.value = '';
+  };
+  const placeImageAtPosition = (x: number, y: number) => {
+    if (!uploadedImage) return;
+    
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      
+      const img = new Image();
+      img.onload = () => {
+        // Use the same 100x100 max dimensions
+        const maxWidth = 100;
+        const maxHeight = 100;
+        
+        let width = img.width;
+        let height = img.height;
+        
+        // Calculate aspect ratio for resizing
+        const aspectRatio = img.width / img.height;
+        
+        if (width > maxWidth) {
+          width = maxWidth;
+          height = width / aspectRatio;
+        }
+        
+        if (height > maxHeight) {
+          height = maxHeight;
+          width = height * aspectRatio;
+        }
+        
+        // Center the image at the given position
+        const posX = x - (width / 2);
+        const posY = y - (height / 2);
+        
+        // Draw the image at the specific position
+        ctx.drawImage(img, posX, posY, width, height);
+      };
+      
+      img.src = uploadedImage;
+    }
+  };
+    
+  // Function to open file dialog
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -240,6 +464,7 @@ export default function Home() {
                 isLoading ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"
               }`}
               variant="default"
+              disabled={isLoading}
             >
               {isLoading ? "Processing..." : "Run"}
             </Button>
@@ -269,6 +494,22 @@ export default function Home() {
             >
               {showCalculationInput ? "Hide Text Input" : "Add Text Input"}
             </Button>
+
+            {/* Image Upload Button */}
+            <Button
+              onClick={triggerFileInput}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+              variant="default"
+            >
+              Upload Image
+            </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleImageUpload}
+            />
           </div>
         </div>
       </div>

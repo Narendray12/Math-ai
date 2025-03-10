@@ -102,16 +102,10 @@ IMPORTANT: Response must be valid JSON. No explanation text, ONLY the JSON array
 }
 
 const app = express();
-app.use(cors({
-  origin: '*',
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-  allowedHeaders: '*'
-}));
+app.use(cors());
 
 // Apply CORS middleware before your routes
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
 
 
 app.use(express.json({ limit: '50mb' }));
