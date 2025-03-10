@@ -387,47 +387,6 @@ export default function Home() {
     // Reset the file input to allow re-selecting the same file
     e.target.value = '';
   };
-  const placeImageAtPosition = (x: number, y: number) => {
-    if (!uploadedImage) return;
-    
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      
-      const img = new Image();
-      img.onload = () => {
-        // Use the same 100x100 max dimensions
-        const maxWidth = 100;
-        const maxHeight = 100;
-        
-        let width = img.width;
-        let height = img.height;
-        
-        // Calculate aspect ratio for resizing
-        const aspectRatio = img.width / img.height;
-        
-        if (width > maxWidth) {
-          width = maxWidth;
-          height = width / aspectRatio;
-        }
-        
-        if (height > maxHeight) {
-          height = maxHeight;
-          width = height * aspectRatio;
-        }
-        
-        // Center the image at the given position
-        const posX = x - (width / 2);
-        const posY = y - (height / 2);
-        
-        // Draw the image at the specific position
-        ctx.drawImage(img, posX, posY, width, height);
-      };
-      
-      img.src = uploadedImage;
-    }
-  };
     
   // Function to open file dialog
   const triggerFileInput = () => {
